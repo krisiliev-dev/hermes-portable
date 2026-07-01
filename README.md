@@ -93,10 +93,22 @@ work but `hermes update` would clobber it — the exact fragile pattern this rep
 avoids.
 
 The clean path is a tiny upstream change: let a `pre_llm_call` callback return
-`{"model": ..., "provider": ...}` to override the turn's model (it already has
-`user_message` in hand), or add a `pre_model_select` hook that receives the agent
-so a plugin can call `switch_model()`. With that, `scripts/route.py` drops in as
-a plugin and interactive sessions route per message too.
+`{"model": ..., "provider": ...}` to override the turn's model. **That change is
+proposed upstream in [NousResearch/hermes-agent#56650](https://github.com/NousResearch/hermes-agent/pull/56650).**
+
+This repo already ships the companion plugin — `plugin/hermes_portable_router.py`
+— which registers a `pre_llm_call` hook that classifies each turn (via
+`scripts/route.py`) and returns the routed model. Once the upstream hook lands
+(or you apply the patch), enable it:
+
+```bash
+mkdir -p ~/.hermes/plugins
+ln -s "$PWD/plugin/hermes_portable_router.py" ~/.hermes/plugins/
+hermes plugins list      # confirm it loaded, then restart hermes
+```
+
+Until then it loads harmlessly (a Hermes without the feature just ignores the
+override), so interactive sessions keep using the health-ordered chain.
 
 ## Adding a newly-discovered free provider
 
