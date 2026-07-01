@@ -54,6 +54,34 @@ hermes                     # interactive chat (uses the chain automatically)
 hermes doctor              # validate the install
 ```
 
+## Deepen the free chain (many OpenRouter models)
+
+OpenRouter hosts lots of free models. `discover_openrouter_free.py` queries their
+**live** API, keeps the ones that are actually free + text-output + high-context
+right now, and adds them to your chain so a rate-limit (429) on one rolls to the
+next:
+
+```bash
+python3 scripts/discover_openrouter_free.py            # add to the chain
+python3 scripts/discover_openrouter_free.py --dry-run  # just show what it'd add
+```
+
+(Windows PowerShell: `uv run --with pyyaml python scripts\discover_openrouter_free.py`,
+with `$env:HERMES_HOME="$env:USERPROFILE\.hermes"` set.)
+
+Bootstrap runs this automatically when an `OPENROUTER_API_KEY` is present. Re-run
+anytime to refresh — the free list changes as OpenRouter adds/removes models.
+
+## How failover actually works
+
+The chain auto-falls-back on **capacity/transient errors** — HTTP 429
+(rate-limit), 5xx, and timeouts — walking `fallback_providers` top to bottom. It
+does **not** retry a **400 bad request** (resending a malformed request can't
+succeed), so keep a *working* primary model (`hermes model`) — a failing primary
+is the main way you end up seeing a hard error instead of a clean fallthrough.
+Free tiers rate-limit aggressively, so a **deep** chain (many providers + many
+free OpenRouter models) is what makes it feel seamless.
+
 ## Task-aware routing (`ask`)
 
 `hermes ask "<prompt>"` classifies the prompt and runs the **best model for that

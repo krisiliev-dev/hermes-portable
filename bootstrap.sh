@@ -78,7 +78,11 @@ else
   say "skipping key setup (--no-keys)"
 fi
 
-# --- 5. health -------------------------------------------------------------
+# --- 5. deepen the free chain from OpenRouter's live model list ------------
+say "discovering free OpenRouter models (deep failover)…"
+"${PYRUN[@]}" "$REPO/scripts/discover_openrouter_free.py" || true
+
+# --- 6. health -------------------------------------------------------------
 if [ "$DO_HEALTH" -eq 1 ]; then
   say "health-checking the chain…"
   "${PYRUN[@]}" "$REPO/scripts/health_check.py" || true
