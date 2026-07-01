@@ -41,10 +41,14 @@ classes:
 
   fast:
     weight: 2
-    keywords: [quick, quickly, tldr, tl;dr, summarize, summary, short, brief,
-               simple, translate, define, what is, one line, one-line, rephrase,
-               fix grammar, spell]
-    # Latency-optimized flash models.
+    keywords: [quick, quickly, tldr, "tl;dr", summarize, summary, short, brief,
+               simple, translate, define, "what is", "one line", one-liner,
+               rephrase, "fix grammar", spelling, yes or no, y/n]
+    # Latency-optimized flash models (both validated working on upstream 0.18).
+    # NOTE: Groq is faster but its models have a low output-token cap that trips
+    # the default max_tokens (no per-model cap override exists), so it's not a
+    # default here — same reasoning as cohere. Add it back if you set a low
+    # global model.max_tokens.
     prefer:
       - {provider: gemini,          model: gemini-2.5-flash}
       - {provider: zai,             model: glm-4.7-flash}
