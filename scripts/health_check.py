@@ -132,7 +132,7 @@ def main() -> int:
     fallbacks = cfg.get("fallback_providers") or []
     print(f"\n{C}⚕ chain health check{RST}  ({CFG_PATH})\n")
 
-    live, throttled, safety = [], [], []
+    live, throttled, safety, dead_list = [], [], [], []
     for entry in fallbacks:
         prov = entry.get("provider", "")
         model = entry.get("model", "")
@@ -154,7 +154,16 @@ def main() -> int:
             throttled.append(entry)
             print(f"  {Y}~ throttled/hiccup{RST} {prov}/{model} {DIM}(keep, low priority){RST}")
         else:
+            dead_list.append({"provider": prov, "model": model})
             print(f"  {R}✗ dead{RST} {prov}/{model} {DIM}(drop){RST}")
+
+    # Advisory cache for the router (route.py) — avoid pointing at dead models.
+    try:
+        (HERMES_HOME / ".portable_health.json").write_text(
+            json.dumps({"dead": dead_list,
+                        "live": [{"provider": e["provider"], "model": e["model"]} for _, e in live]}))
+    except Exception:
+        pass
 
     # Preserve the curated quality order within each bucket (don't resort by raw
     # latency — a faster-but-weaker model shouldn't leapfrog a stronger one).

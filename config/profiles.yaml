@@ -1,0 +1,67 @@
+# Per-task model routing (phase 2).
+#
+# scripts/route.py classifies a prompt into one of these task classes, then
+# picks the FIRST model in that class's `prefer` list whose provider key is
+# present (and, if a health cache exists, not dead). If none match it falls
+# back to the config.yaml primary + chain.
+#
+# Why this shape: with clean upstream Hermes we route per one-shot call via
+# `hermes -z "..." -m MODEL --provider PROVIDER` — no source fork needed. The
+# whole fallback chain still applies underneath if the chosen model fails.
+#
+# `keywords` drive the fast deterministic classifier. `weight` breaks ties
+# (higher = stronger pull toward that class when multiple match).
+
+classes:
+  coding:
+    weight: 3
+    keywords: [code, function, class, bug, debug, stack trace, traceback, compile,
+               refactor, unit test, pytest, regex, sql, api, endpoint, npm, pip,
+               typescript, python, javascript, rust, golang, java, c++, segfault,
+               exception, lint, git, dockerfile, yaml, json schema, algorithm,
+               implement, "```"]
+    # Strong open coders first; flash models last (weaker at code).
+    prefer:
+      - {provider: nvidia,          model: nvidia/nemotron-3-super-120b-a12b}
+      - {provider: openrouter,      model: openai/gpt-oss-120b:free}
+      - {provider: alibaba,         model: qwen3-max}
+      - {provider: zai,             model: glm-4.7-flash}
+      - {provider: gemini,          model: gemini-2.5-flash}
+
+  reasoning:
+    weight: 2
+    keywords: [prove, proof, why, analyze, analyse, reason, step by step, plan,
+               strategy, trade-off, tradeoff, compare, evaluate, math, calculate,
+               derive, logic, puzzle, optimize, design, architecture, root cause]
+    prefer:
+      - {provider: nvidia,          model: nvidia/nemotron-3-super-120b-a12b}
+      - {provider: openrouter,      model: openai/gpt-oss-120b:free}
+      - {provider: alibaba,         model: qwen3-max}
+      - {provider: gemini,          model: gemini-2.5-flash}
+
+  fast:
+    weight: 2
+    keywords: [quick, quickly, tldr, tl;dr, summarize, summary, short, brief,
+               simple, translate, define, what is, one line, one-line, rephrase,
+               fix grammar, spell]
+    # Latency-optimized flash models.
+    prefer:
+      - {provider: gemini,          model: gemini-2.5-flash}
+      - {provider: zai,             model: glm-4.7-flash}
+
+  creative:
+    weight: 1
+    keywords: [write, story, poem, lyric, brainstorm, idea, name, slogan, tagline,
+               marketing, creative, imagine, character, dialogue, blog, tweet, post]
+    prefer:
+      - {provider: custom:mistral,  model: mistral-large-latest}
+      - {provider: alibaba,         model: qwen3-max}
+      - {provider: gemini,          model: gemini-2.5-flash}
+
+  general:
+    weight: 0
+    keywords: []
+    prefer:
+      - {provider: gemini,          model: gemini-2.5-flash}
+      - {provider: zai,             model: glm-4.7-flash}
+      - {provider: nvidia,          model: nvidia/nemotron-3-super-120b-a12b}

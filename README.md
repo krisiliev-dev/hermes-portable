@@ -36,9 +36,8 @@ working. Nothing here edits Hermes's source.
 | 3 | openrouter | gpt-oss-120b:free | `OPENROUTER_API_KEY` |
 | 4 | alibaba | qwen3-max | `DASHSCOPE_API_KEY` |
 | 5 | mistral | mistral-large-latest | `MISTRAL_API_KEY` |
-| 6 | cohere | command-r-plus | `COHERE_API_KEY` |
-| 7 | openai-codex | gpt-5.5 | OAuth (quality safety-net, not free) |
-| 8 | ollama | llama3.2-64k | local (offline last resort) |
+| 6 | openai-codex | gpt-5.5 | OAuth (quality safety-net, not free) |
+| 7 | ollama | llama3.2-64k | local (offline last resort) |
 
 You don't need all of them — **one key is enough** to start. Gemini is the
 easiest free start: <https://aistudio.google.com/apikey>.
@@ -46,12 +45,43 @@ easiest free start: <https://aistudio.google.com/apikey>.
 ## Everyday commands
 
 ```bash
-hermes                     # launch (uses the chain automatically)
+hermes                     # interactive chat (uses the chain automatically)
+./bin/hermes ask "..."     # TASK-ROUTED one-shot: picks the best model for the task
+./bin/hermes route "..."   # preview which model routing would pick (no LLM call)
 ./bin/hermes --setup       # re-run everything (config + keys + health)
 ./bin/hermes --keys        # add/update provider keys
 ./bin/hermes --health      # re-ping the chain and reorder live-first
 hermes doctor              # validate the install
 ```
+
+## Task-aware routing (`ask`)
+
+`hermes ask "<prompt>"` classifies the prompt and runs the **best model for that
+kind of work** — a strong open coder for code, a flash model for quick questions —
+via `hermes -z "<prompt>" -m MODEL --provider PROVIDER`. The full fallback chain
+still applies underneath if the picked model fails.
+
+```
+$ hermes route "debug this python traceback"
+class  : coding
+model  : nvidia / nvidia/nemotron-3-super-120b-a12b
+
+$ hermes route "give me a quick tldr"
+class  : fast
+model  : gemini / gemini-2.5-flash
+```
+
+- Task classes and their model preferences live in `config/profiles.yaml`
+  (`coding`, `reasoning`, `fast`, `creative`, `general`). Edit freely.
+- Classification is a fast, transparent keyword scorer (zero added latency);
+  `hermes route --explain "..."` shows the scores. Force a class with
+  `hermes ask --task coding "..."`.
+- Routing only picks providers whose key you have, and skips models the last
+  health check marked dead.
+- **Scope:** routing applies to one-shot `ask`. Interactive sessions can't be
+  routed per-message from outside the agent loop — that would need an in-loop
+  Hermes plugin hooking `chat_completion_helpers.py` (possible future work). For
+  interactive use, the health-ordered chain already handles quality + failover.
 
 ## Adding a newly-discovered free provider
 
@@ -74,15 +104,6 @@ deliberately by you (or a reviewed PR), not by an unattended daemon.
 - **Config overlay is non-destructive.** `apply_config.py` merges only the keys
   it owns and backs up any existing `config.yaml` first.
 - **Keys** live in `~/.hermes/.env` (chmod 600), never in this repo.
-
-## Roadmap — per-task routing (phase 2)
-
-"Use a coding model for coding" is not yet automatic here. Hermes natively biases
-toward stronger models for coding via `openrouter.min_coding_score`. True
-per-task routing (classify the request → pick the best chain member) belongs as a
-small module hooked into Hermes's real inference path
-(`agent/chat_completion_helpers.py`) — *not* the old interceptor that silently
-no-op'd because the main agent has no `call_llm` method. Tracked as future work.
 
 ## License
 

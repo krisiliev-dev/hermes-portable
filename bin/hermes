@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Thin launcher for hermes-portable.
-#   ./bin/hermes            -> ensure installed, then launch Hermes (passes args through)
-#   ./bin/hermes --setup    -> re-run full bootstrap (config + keys + health)
-#   ./bin/hermes --keys     -> (re)collect provider API keys
-#   ./bin/hermes --health   -> health-check + reorder the chain
+#   ./bin/hermes                 -> ensure installed, then launch Hermes (interactive, passes args through)
+#   ./bin/hermes ask "<prompt>"  -> TASK-ROUTED one-shot: pick the best model for the task, then run it
+#   ./bin/hermes route "<prompt>"-> show which model the router would pick (no LLM call)
+#   ./bin/hermes --setup         -> re-run full bootstrap (config + keys + health)
+#   ./bin/hermes --keys          -> (re)collect provider API keys
+#   ./bin/hermes --health        -> health-check + reorder the chain
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,6 +16,28 @@ case "${1:-}" in
   --setup)  exec "$REPO/bootstrap.sh" ;;
   --keys)   shift; exec "${PYRUN[@]}" "$REPO/scripts/setup_keys.py" "$@" ;;
   --health) shift; exec "${PYRUN[@]}" "$REPO/scripts/health_check.py" "$@" ;;
+  route)    shift; exec "${PYRUN[@]}" "$REPO/scripts/route.py" --explain "$@" ;;
+  ask)
+    shift
+    # Split router flags (--task X) from the prompt/extra hermes args.
+    ROUTE_ARGS=(); PROMPT=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --task) ROUTE_ARGS+=(--task "$2"); shift 2 ;;
+        *) PROMPT="$1"; shift; break ;;
+      esac
+    done
+    [ -n "$PROMPT" ] || { echo "usage: hermes ask [--task CLASS] \"<prompt>\" [hermes args...]"; exit 2; }
+    DECISION="$("${PYRUN[@]}" "$REPO/scripts/route.py" "${ROUTE_ARGS[@]}" "$PROMPT" || true)"
+    PROVIDER="$(printf '%s' "$DECISION" | cut -f1)"
+    MODEL="$(printf '%s' "$DECISION" | cut -f2)"
+    if [ -n "$PROVIDER" ] && [ -n "$MODEL" ]; then
+      echo "▸ routed → $PROVIDER / $MODEL" >&2
+      exec hermes -z "$PROMPT" -m "$MODEL" --provider "$PROVIDER" "$@"
+    fi
+    echo "▸ router found no usable model; using config default chain" >&2
+    exec hermes -z "$PROMPT" "$@"
+    ;;
 esac
 
 if ! command -v hermes >/dev/null 2>&1; then

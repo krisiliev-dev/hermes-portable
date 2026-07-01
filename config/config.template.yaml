@@ -26,8 +26,6 @@ fallback_providers:
     model: qwen3-max
   - provider: custom:mistral
     model: mistral-large-latest
-  - provider: custom:cohere
-    model: command-r-plus-08-2024
   - provider: openai-codex
     model: gpt-5.5
     base_url: https://chatgpt.com/backend-api/codex
@@ -36,22 +34,38 @@ fallback_providers:
 
 # OpenAI-compatible providers referenced as custom:<name> above.
 # MUST be a YAML list (dict form breaks the gateway platform adapter).
+#   models.<id>.context_length is REQUIRED for OpenAI-compatible custom
+#   endpoints — Hermes can't auto-detect their window and otherwise defaults to
+#   a tiny value ("context length exceeded" on the first turn).
 custom_providers:
   - name: groq
     base_url: https://api.groq.com/openai/v1
     key_env: GROQ_API_KEY
+    models:
+      llama-3.3-70b-versatile: {context_length: 131072}
   - name: mistral
     base_url: https://api.mistral.ai/v1
     key_env: MISTRAL_API_KEY
+    models:
+      mistral-large-latest: {context_length: 131072}
+  # cohere defined but NOT in the active chain: its /compatibility endpoint
+  # reports ~0 usable context on upstream Hermes and can crash a turn instead
+  # of failing over. Re-add to fallback_providers only if that changes.
   - name: cohere
     base_url: https://api.cohere.com/compatibility/v1
     key_env: COHERE_API_KEY
+    models:
+      command-r-plus-08-2024: {context_length: 131072}
   - name: sambanova
     base_url: https://api.sambanova.ai/v1
     key_env: SAMBANOVA_API_KEY
+    models:
+      Meta-Llama-3.3-70B-Instruct: {context_length: 131072}
   - name: ollama
     base_url: http://127.0.0.1:11434/v1
     key_env: OLLAMA_LOCAL_KEY
+    models:
+      llama3.2-64k: {context_length: 65536}
 
 # Quality / cost knobs that make weak-ish free models behave well.
 agent:
