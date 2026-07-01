@@ -78,10 +78,25 @@ model  : gemini / gemini-2.5-flash
   `hermes ask --task coding "..."`.
 - Routing only picks providers whose key you have, and skips models the last
   health check marked dead.
-- **Scope:** routing applies to one-shot `ask`. Interactive sessions can't be
-  routed per-message from outside the agent loop — that would need an in-loop
-  Hermes plugin hooking `chat_completion_helpers.py` (possible future work). For
-  interactive use, the health-ordered chain already handles quality + failover.
+- **Scope:** routing applies to one-shot `ask`. Interactive sessions are **not**
+  auto-routed per message — see below. For interactive use, the health-ordered
+  chain handles quality + failover, and you can switch manually with `/model`.
+
+### Why interactive isn't auto-routed (and the clean fix)
+
+Investigated against upstream Hermes 0.18. Its plugin hooks can inject context
+(`pre_llm_call`) or skip/rewrite a message (`pre_gateway_dispatch`), but **none
+can override the model for a turn** — `pre_llm_call` receives `user_message` and
+`model` but no agent handle, and its return only appends context. So per-message
+routing can't be done from a plugin today. Patching the agent loop directly would
+work but `hermes update` would clobber it — the exact fragile pattern this repo
+avoids.
+
+The clean path is a tiny upstream change: let a `pre_llm_call` callback return
+`{"model": ..., "provider": ...}` to override the turn's model (it already has
+`user_message` in hand), or add a `pre_model_select` hook that receives the agent
+so a plugin can call `switch_model()`. With that, `scripts/route.py` drops in as
+a plugin and interactive sessions route per message too.
 
 ## Adding a newly-discovered free provider
 
