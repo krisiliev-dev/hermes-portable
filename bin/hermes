@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Thin launcher for hermes-portable.
+#   ./bin/hermes            -> ensure installed, then launch Hermes (passes args through)
+#   ./bin/hermes --setup    -> re-run full bootstrap (config + keys + health)
+#   ./bin/hermes --keys     -> (re)collect provider API keys
+#   ./bin/hermes --health   -> health-check + reorder the chain
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PATH="$HOME/.local/bin:$PATH"
+PYRUN=(uv run --with pyyaml python)
+
+case "${1:-}" in
+  --setup)  exec "$REPO/bootstrap.sh" ;;
+  --keys)   shift; exec "${PYRUN[@]}" "$REPO/scripts/setup_keys.py" "$@" ;;
+  --health) shift; exec "${PYRUN[@]}" "$REPO/scripts/health_check.py" "$@" ;;
+esac
+
+if ! command -v hermes >/dev/null 2>&1; then
+  echo "Hermes not installed yet — running first-time setup…"
+  "$REPO/bootstrap.sh"
+fi
+exec hermes "$@"

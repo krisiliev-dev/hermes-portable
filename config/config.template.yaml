@@ -1,0 +1,67 @@
+# hermes-portable — opinionated overlay applied on top of a clean Hermes install.
+# Only these keys are written into ~/.hermes/config.yaml; everything else is
+# left to Hermes's own defaults + config migration so this stays compatible
+# across Hermes versions. Edit freely, then re-run: ./bin/hermes --setup
+#
+# The chain is FREE-FIRST: a frontier-class free model is primary, and each
+# fallback is a different provider/infra so one provider rate-limiting or dying
+# rolls over to the next. Dead/slow entries are pruned & reordered live by
+# scripts/health_check.py (run on setup, or `./bin/hermes --health`).
+
+model:
+  default: gemini-2.5-flash
+  provider: gemini
+
+# Primary → fallbacks. Walked top-to-bottom on rate-limit / error / timeout.
+# openai-codex (needs OAuth, not a free key) and ollama (local) are the
+# always-there safety net at the bottom and are never pruned by health checks.
+fallback_providers:
+  - provider: zai
+    model: glm-4.7-flash
+  - provider: nvidia
+    model: nvidia/nemotron-3-super-120b-a12b
+  - provider: openrouter
+    model: openai/gpt-oss-120b:free
+  - provider: alibaba
+    model: qwen3-max
+  - provider: custom:mistral
+    model: mistral-large-latest
+  - provider: custom:cohere
+    model: command-r-plus-08-2024
+  - provider: openai-codex
+    model: gpt-5.5
+    base_url: https://chatgpt.com/backend-api/codex
+  - provider: custom:ollama
+    model: llama3.2-64k
+
+# OpenAI-compatible providers referenced as custom:<name> above.
+# MUST be a YAML list (dict form breaks the gateway platform adapter).
+custom_providers:
+  - name: groq
+    base_url: https://api.groq.com/openai/v1
+    key_env: GROQ_API_KEY
+  - name: mistral
+    base_url: https://api.mistral.ai/v1
+    key_env: MISTRAL_API_KEY
+  - name: cohere
+    base_url: https://api.cohere.com/compatibility/v1
+    key_env: COHERE_API_KEY
+  - name: sambanova
+    base_url: https://api.sambanova.ai/v1
+    key_env: SAMBANOVA_API_KEY
+  - name: ollama
+    base_url: http://127.0.0.1:11434/v1
+    key_env: OLLAMA_LOCAL_KEY
+
+# Quality / cost knobs that make weak-ish free models behave well.
+agent:
+  reasoning_effort: medium        # bump per-task with `/effort high`
+compression:
+  enabled: true
+  threshold: 0.7                  # use more raw context before compacting
+prompt_caching:
+  cache_ttl: 1h
+openrouter:
+  min_coding_score: 0.65          # native hint: prefer stronger models for coding
+web:
+  backend: tavily                 # falls back to ddgs if TAVILY_API_KEY absent

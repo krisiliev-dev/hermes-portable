@@ -1,0 +1,113 @@
+# Provider catalog — the single source of truth for hermes-portable.
+#
+#   scripts/setup_keys.py  reads this to know which API keys to look for / prompt for.
+#   scripts/health_check.py reads this to know how to ping each provider.
+#
+# ADD A NEW FREE PROVIDER = add one entry here (and reference it in
+# config/config.template.yaml's fallback_providers). That's the whole
+# "it can find more free agents and ask for keys" story.
+#
+# Fields:
+#   key_env   : env var the key lives under in ~/.hermes/.env
+#   base_url  : OpenAI-compatible /chat/completions base (used by health_check)
+#   free_url  : where a human gets a free key (shown by setup_keys)
+#   free      : true if a no-cost tier exists (setup prompts for these first)
+#   health_model : a cheap model id to ping for liveness (optional; skips if absent)
+#   kind      : native | custom | oauth | local   (default native)
+#   note      : shown to the user during setup
+
+providers:
+  gemini:
+    key_env: GEMINI_API_KEY
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    free_url: https://aistudio.google.com/apikey
+    free: true
+    health_model: gemini-2.5-flash
+    note: "Primary. 1M context, fast, generous free tier. One key only — do NOT farm many (gets the account banned)."
+
+  zai:
+    key_env: GLM_API_KEY
+    base_url: https://api.z.ai/api/paas/v4
+    free_url: https://z.ai/manage-apikey/apikey-list
+    free: true
+    health_model: glm-4.7-flash
+    note: "Z.AI GLM. glm-4.7-flash is free (203K ctx); glm-4.6 is paid."
+
+  nvidia:
+    key_env: NVIDIA_API_KEY
+    base_url: https://integrate.api.nvidia.com/v1
+    free_url: https://build.nvidia.com/
+    free: true
+    health_model: nvidia/nemotron-3-super-120b-a12b
+    note: "NVIDIA NIM. Free credits for hosted frontier open models."
+
+  openrouter:
+    key_env: OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+    free_url: https://openrouter.ai/keys
+    free: true
+    health_model: openai/gpt-oss-120b:free
+    note: "Aggregator. :free models are free; keep ~$10 balance to lift free-tier daily caps."
+
+  alibaba:
+    key_env: DASHSCOPE_API_KEY
+    base_url: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+    free_url: https://bailian.console.alibabacloud.com/
+    free: true
+    health_model: qwen3-max
+    note: "Qwen (DashScope International). Free trial quota."
+
+  custom:mistral:
+    key_env: MISTRAL_API_KEY
+    base_url: https://api.mistral.ai/v1
+    free_url: https://console.mistral.ai/api-keys
+    free: true
+    health_model: mistral-large-latest
+    note: "Mistral. Free experiment tier."
+
+  custom:cohere:
+    key_env: COHERE_API_KEY
+    base_url: https://api.cohere.com/compatibility/v1
+    free_url: https://dashboard.cohere.com/api-keys
+    free: true
+    health_model: command-r-plus-08-2024
+    note: "Cohere. Free trial keys (rate-limited)."
+
+  custom:groq:
+    key_env: GROQ_API_KEY
+    base_url: https://api.groq.com/openai/v1
+    free_url: https://console.groq.com/keys
+    free: true
+    health_model: llama-3.3-70b-versatile
+    note: "Groq. Very fast, but low free TPM (~12K) can 413 on big requests — not in default chain."
+
+  custom:sambanova:
+    key_env: SAMBANOVA_API_KEY
+    base_url: https://api.sambanova.ai/v1
+    free_url: https://cloud.sambanova.ai/apis
+    free: true
+    health_model: Meta-Llama-3.3-70B-Instruct
+    note: "SambaNova. Free tier."
+
+  openai-codex:
+    key_env: null
+    kind: oauth
+    free: false
+    note: "ChatGPT/Codex via OAuth (`hermes model` → login). Quality safety-net, NOT free — bottom of chain."
+
+  custom:ollama:
+    key_env: OLLAMA_LOCAL_KEY
+    base_url: http://127.0.0.1:11434/v1
+    kind: local
+    free: true
+    health_model: llama3.2-64k
+    note: "Local last resort (offline). `brew install ollama`; needs a >=64K-ctx model. Key value is the literal 'ollama'."
+
+# Non-LLM helper keys setup can also collect (optional, improve capability).
+extras:
+  TAVILY_API_KEY:
+    free_url: https://app.tavily.com/home
+    note: "Web search + extract (1000/mo free). Without it, web falls back to ddgs (search-only)."
+  GITHUB_TOKEN:
+    free_url: https://github.com/settings/tokens
+    note: "Lifts Skills-Hub GitHub rate limit from 60/hr."
