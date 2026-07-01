@@ -132,6 +132,28 @@ deliberately by you (or a reviewed PR), not by an unattended daemon.
   it owns and backs up any existing `config.yaml` first.
 - **Keys** live in `~/.hermes/.env` (chmod 600), never in this repo.
 
+## Troubleshooting
+
+**`hermes: not recognized` / `command not found` after bootstrap.** The install
+succeeded but uv's tool-bin directory isn't on your PATH yet — common on Windows
+when you bootstrap under Git Bash but launch under PowerShell (different PATHs).
+Fix:
+
+```bash
+uv tool update-shell     # registers the bin dir on PATH; then reopen the terminal
+```
+
+If it's still not found, add the dir manually and reopen the terminal:
+
+- **Windows (PowerShell):** uv installs to `%USERPROFILE%\.local\bin`
+  ```powershell
+  $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"   # current window
+  [Environment]::SetEnvironmentVariable("Path","$env:USERPROFILE\.local\bin;" + [Environment]::GetEnvironmentVariable("Path","User"),"User")  # permanent
+  ```
+- **macOS/Linux:** it's `~/.local/bin` — add `export PATH="$HOME/.local/bin:$PATH"` to your shell rc.
+
+Always **open a fresh terminal** after a PATH change. Verify with `hermes --version`.
+
 ## License
 
 MIT.

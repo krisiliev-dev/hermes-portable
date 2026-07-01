@@ -56,6 +56,10 @@ else
   uv tool install "hermes-agent${PIN}" --python 3.11 \
     || uv tool install "hermes-agent${PIN}"
   export PATH="$HOME/.local/bin:$PATH"
+  # Persist uv's tool bin dir onto the user's PATH (shell profile on Unix,
+  # user PATH in the registry on Windows). Without this, a fresh terminal —
+  # especially PowerShell after a Git-Bash bootstrap — won't find `hermes`.
+  uv tool update-shell 2>/dev/null || true
 fi
 HERMES_BIN="$(command -v hermes || echo "$HOME/.local/bin/hermes")"
 
@@ -86,6 +90,9 @@ fi
 cat <<EOF
 
 ${G}✓ hermes-portable ready.${RST}
+
+  ${Y}Open a NEW terminal first${RST} so the updated PATH takes effect
+  (Windows: use PowerShell; if 'hermes' still isn't found, run: uv tool update-shell)
 
   Launch:        hermes            (or ${REPO}/bin/hermes)
   Re-run setup:  ${REPO}/bin/hermes --setup
