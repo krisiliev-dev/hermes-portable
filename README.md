@@ -50,7 +50,7 @@ hermes                     # interactive chat (uses the chain automatically)
 ./bin/hermes route "..."   # preview which model routing would pick (no LLM call)
 ./bin/hermes --setup       # re-run everything (config + keys + health)
 ./bin/hermes --keys        # add/update provider keys
-./bin/hermes --health      # re-ping the chain and reorder live-first
+./bin/hermes --health      # re-ping the chain (add --reseed to re-test dropped providers)
 hermes doctor              # validate the install
 ```
 

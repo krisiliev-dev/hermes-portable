@@ -130,6 +130,23 @@ def main() -> int:
         return (kind, meta.get("base_url"), env.get(meta.get("key_env", ""), ""))
 
     fallbacks = cfg.get("fallback_providers") or []
+
+    # --reseed: re-add known providers that were previously dropped (dead) so a
+    # provider that has since come alive (e.g. account finished) is re-tested and
+    # returns to the chain automatically. Sources: the template chain + the
+    # primary model. Discovered OpenRouter models already in the chain are kept.
+    if "--reseed" in sys.argv:
+        seen = {(e.get("provider"), e.get("model")) for e in fallbacks}
+        tmpl = REPO / "config" / "config.template.yaml"
+        readded = 0
+        if tmpl.exists():
+            for e in (yaml.safe_load(tmpl.read_text()) or {}).get("fallback_providers", []):
+                kkey = (e.get("provider"), e.get("model"))
+                if kkey not in seen:
+                    fallbacks.append(e); seen.add(kkey); readded += 1
+        if readded:
+            print(f"{DIM}reseed: re-testing {readded} known provider(s) that were dropped{RST}")
+
     print(f"\n{C}⚕ chain health check{RST}  ({CFG_PATH})\n")
 
     live, throttled, safety, dead_list = [], [], [], []

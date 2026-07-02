@@ -58,7 +58,7 @@ def tier1_auto(dry: bool) -> list[str]:
     print(f"{C}▸ Tier 1: low-risk auto-maintenance{RST}")
     steps = [
         ("discover_openrouter_free.py", [] if not dry else ["--dry-run"], "refresh free OpenRouter models"),
-        ("health_check.py", flag, "prune dead / demote throttled"),
+        ("health_check.py", flag + ["--reseed"], "re-test known providers + prune dead"),
         ("rank_models.py", flag, "re-rank chain by capability"),
     ]
     for script, a, label in steps:
