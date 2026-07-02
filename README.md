@@ -122,17 +122,36 @@ python3 scripts/self_improve.py --propose   # research + write a proposals repor
 only as: chain-ordering (via the safe scripts), a proposals report, new skills, or
 git PRs — all reversible and gated.
 
-### Schedule it (optional)
+### Make it autonomous (recommended)
 
-- **macOS/Linux (cron):** weekly, Monday 9am →
-  `0 9 * * 1 cd /path/to/hermes-portable && ./bin/hermes --improve >> ~/.hermes/self_improve.cron.log 2>&1`
-  (or use the Claude Code `/schedule` skill).
-- **Windows (Task Scheduler):**
-  ```powershell
-  $act = New-ScheduledTaskAction -Execute "powershell" -Argument "-c `"cd C:\path\to\hermes-portable; uv run --with pyyaml python scripts\self_improve.py`""
-  $trg = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 9am
-  Register-ScheduledTask -TaskName "hermes-self-improve" -Action $act -Trigger $trg
-  ```
+Let Hermes run self-improvement **on its own** via its native cron — no manual runs:
+
+```bash
+python3 scripts/setup_autonomy.py         # install; --remove to uninstall
+# or: ./bin/hermes --autonomy
+```
+
+This creates two jobs the **gateway dispatches automatically**:
+- `hermes-self-improve-auto` — every 6h, `--no-agent` → the safe Tier-1 pass (applied).
+- `hermes-self-improve-propose` — daily 03:00 → researches + writes `~/.hermes/PROPOSALS.md`.
+
+Tune cadence: `--auto-every 4h`, `--propose-cron "0 2 * * *"`. Manage with
+`hermes cron list / pause / resume / remove`.
+
+> **Requires the gateway running** — cron only fires when `hermes gateway` is up
+> (`hermes cron status` confirms). On a server/Mac it usually already is (it's
+> what runs your Discord/etc.). On Windows, start it and keep it alive (run
+> `hermes gateway start` at logon via Task Scheduler).
+
+**Gateway-free, truly "on idle" alternative (Windows):** if you don't keep a
+gateway running, use Task Scheduler's **On-Idle** trigger to run the Tier-1 pass
+whenever the machine sits idle:
+```powershell
+$act = New-ScheduledTaskAction -Execute "powershell" -Argument "-c `"cd C:\path\to\hermes-portable; uv run --with pyyaml python scripts\self_improve.py --auto`""
+$idle = New-ScheduledTaskTrigger -AtLogOn
+$set  = New-ScheduledTaskSettingsSet -RunOnlyIfIdle -IdleDuration (New-TimeSpan -Minutes 10) -IdleWaitTimeout (New-TimeSpan -Hours 2)
+Register-ScheduledTask -TaskName "hermes-self-improve" -Action $act -Trigger $idle -Settings $set
+```
 
 ## How failover actually works
 

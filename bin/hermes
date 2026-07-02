@@ -8,7 +8,8 @@
 #   ./bin/hermes --health        -> health-check (prune dead, demote throttled)
 #   ./bin/hermes --rank          -> reorder chain by CAPABILITY (+ --eval for live scoring)
 #   ./bin/hermes --discover      -> pull free OpenRouter models into the chain
-#   ./bin/hermes --improve       -> self-improve: auto low-risk fixes + a proposals report
+#   ./bin/hermes --improve       -> self-improve now: auto low-risk fixes + a proposals report
+#   ./bin/hermes --autonomy      -> install native cron so Hermes self-improves on its own
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,6 +23,7 @@ case "${1:-}" in
   --rank)   shift; exec "${PYRUN[@]}" "$REPO/scripts/rank_models.py" "$@" ;;
   --discover) shift; exec "${PYRUN[@]}" "$REPO/scripts/discover_openrouter_free.py" "$@" ;;
   --improve) shift; exec "${PYRUN[@]}" "$REPO/scripts/self_improve.py" "$@" ;;
+  --autonomy) shift; exec "${PYRUN[@]}" "$REPO/scripts/setup_autonomy.py" "$@" ;;
   route)    shift; exec "${PYRUN[@]}" "$REPO/scripts/route.py" --explain "$@" ;;
   ask)
     shift
