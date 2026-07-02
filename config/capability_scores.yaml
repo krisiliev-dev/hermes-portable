@@ -59,6 +59,12 @@ weights:
   capability: 0.70    # "most capable first" leads; speed/reliability break ties
   reliability: 0.20   # live=1.0, throttled=0.5 (dead is dropped)
   speed: 0.10         # faster live latency = higher ("quick" tiebreak)
+
+# Models with capability below this are the "weak free" tier. The paid Codex
+# safety-net is placed ABOVE this tier (smart-but-paid beats dumb-but-free) and
+# below the strong free models. Raise it to be pickier about what counts as
+# "strong enough" to sit above Codex.
+weak_capability_threshold: 0.75
 # Per-dimension weighting when computing a single capability number for the
 # general chain. Override per-run with `--task reasoning|coding|general`.
 capability_mix:

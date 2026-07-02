@@ -95,11 +95,11 @@ def capability_for(model: str, table: dict, defaults: dict) -> dict:
 def load_health():
     p = HERMES_HOME / ".portable_health.json"
     if not p.exists():
-        return {}, {}, set()
+        return {}, set(), set(), set()
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
-        return {}, {}, set()
+        return {}, set(), set(), set()
     lat = {(e["provider"], e["model"]): e.get("latency") for e in d.get("live", [])}
     live = set(lat)
     thr = {(e["provider"], e["model"]) for e in d.get("throttled", [])}
@@ -188,6 +188,7 @@ def main() -> int:
     defaults = scores_cfg.get("defaults", {})
     W = scores_cfg.get("weights", {"capability": 0.6, "reliability": 0.25, "speed": 0.15})
     mix = scores_cfg.get("capability_mix", {}).get(task) or {"general": 0.5, "reasoning": 0.3, "coding": 0.2}
+    weak_thr = float(scores_cfg.get("weak_capability_threshold", 0.75))
     lat_map, throttled, dead, live = load_health()
     env = load_env()
 
@@ -235,22 +236,36 @@ def main() -> int:
         ranked.append((score, cap_final, reliability, e, m, p))
 
     ranked.sort(key=lambda x: -x[0])
-    print()
-    for score, cap, rel, e, m, p in ranked:
-        print(f"  {G}{score:.3f}{RST}  {p}/{m}  {DIM}(cap {cap:.2f}, rel {rel:.1f}){RST}")
-    for e in safety:
-        print(f"  {DIM}—.——  {e['provider']}/{e['model']}  (safety net, pinned last){RST}")
 
-    new_fb = [r[3] for r in ranked] + safety   # r[3] = original entry dict
+    # Tier the chain: strong free (cap ≥ threshold) → PAID safety-net (Codex,
+    # promoted above weak free = smart-but-paid beats dumb-but-free) → weak free
+    # → LOCAL (ollama, always last, offline resort).
+    paid = [e for e in safety if e.get("provider") == "openai-codex"]
+    local = [e for e in safety if e.get("provider") == "custom:ollama"]
+    other_safety = [e for e in safety if e.get("provider") not in ("openai-codex", "custom:ollama")]
+    strong = [r for r in ranked if r[1] >= weak_thr]
+    weak = [r for r in ranked if r[1] < weak_thr]
+
+    print()
+    for score, cap, rel, e, m, p in strong:
+        print(f"  {G}{score:.3f}{RST}  {p}/{m}  {DIM}(cap {cap:.2f}, rel {rel:.1f}){RST}")
+    for e in paid:
+        print(f"  {C}——.—  {e['provider']}/{e['model']}  (paid safety-net → above weak free){RST}")
+    for score, cap, rel, e, m, p in weak:
+        print(f"  {DIM}{score:.3f}  {p}/{m}  (cap {cap:.2f}, weak → below paid){RST}")
+    for e in local + other_safety:
+        print(f"  {DIM}—.——  {e['provider']}/{e['model']}  (local/last resort){RST}")
+
+    new_fb = [r[3] for r in strong] + paid + [r[3] for r in weak] + local + other_safety
 
     changed = new_fb != fb
-    if set_primary and ranked:
-        top = ranked[0]
+    if set_primary and strong:
+        top = strong[0]
         cur = cfg.get("model", {}) or {}
         if cur.get("provider") != top[5] or cur.get("default") != top[4]:
             print(f"\n{Y}⟳ set primary → {top[5]}/{top[4]}{RST}")
             cfg["model"] = {"provider": top[5], "default": top[4]}
-            new_fb = [r[3] for r in ranked[1:]] + safety
+            new_fb = [r[3] for r in strong[1:]] + paid + [r[3] for r in weak] + local + other_safety
             changed = True
 
     if dry:
