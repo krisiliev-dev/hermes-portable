@@ -25,6 +25,13 @@ from __future__ import annotations
 import json
 import os
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import time
 import urllib.request
 from pathlib import Path
@@ -44,7 +51,7 @@ def load_key() -> str:
     env = dict(os.environ)
     envf = HERMES_HOME / ".env"
     if envf.exists():
-        for line in envf.read_text().splitlines():
+        for line in envf.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, _, v = line.partition("=")
@@ -123,7 +130,7 @@ def main() -> int:
     if not CFG.exists():
         sys.exit(f"\nno config at {CFG} — run bootstrap first")
 
-    cfg = yaml.safe_load(CFG.read_text()) or {}
+    cfg = yaml.safe_load(CFG.read_text(encoding="utf-8")) or {}
     fb = cfg.get("fallback_providers") or []
 
     SAFETY = {"openai-codex", "custom:ollama"}
@@ -141,9 +148,9 @@ def main() -> int:
             merged.append(e)
 
     bak = CFG.with_name(f"config.yaml.bak.orfree-{time.strftime('%Y%m%d-%H%M%S')}")
-    bak.write_text(CFG.read_text())
+    bak.write_text(CFG.read_text(encoding="utf-8"), encoding="utf-8")
     cfg["fallback_providers"] = merged
-    CFG.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, width=1000))
+    CFG.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8")
     print(f"\n{G}✓ added {len(discovered)} free OpenRouter models{RST} "
           f"(chain now {len(merged)} fallbacks). backup: {bak.name}")
     print(f"{DIM}Primary model unchanged. Re-run anytime to refresh the free list.{RST}")

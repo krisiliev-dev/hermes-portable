@@ -31,6 +31,13 @@ import os
 import shutil
 import subprocess
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import time
 from pathlib import Path
 
@@ -83,13 +90,13 @@ def _context_for_proposals() -> str:
     cfg = HERMES_HOME / "config.yaml"
     if cfg.exists():
         import yaml
-        c = yaml.safe_load(cfg.read_text()) or {}
+        c = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
         model = (c.get("model") or {})
         fb = c.get("fallback_providers") or []
         parts.append(f"Primary: {model.get('provider')}/{model.get('default')}")
         parts.append("Chain: " + ", ".join(f"{e.get('provider')}/{e.get('model')}" for e in fb))
     if LOG.exists():
-        parts.append("Recent auto-maintenance:\n" + LOG.read_text()[-1500:])
+        parts.append("Recent auto-maintenance:\n" + LOG.read_text(encoding="utf-8")[-1500:])
     return "\n".join(parts)
 
 
@@ -135,7 +142,7 @@ def tier2_propose() -> None:
         return
     stamp = time.strftime("%Y-%m-%d %H:%M")
     header = f"# Hermes self-improvement proposals\n_Generated {stamp}. Review before applying; nothing was changed._\n\n"
-    PROPOSALS.write_text(header + report + "\n")
+    PROPOSALS.write_text(header + report + "\n", encoding="utf-8")
     print(f"  {G}✓ wrote {PROPOSALS}{RST}  {DIM}(review, then apply what you like){RST}")
 
 
@@ -156,7 +163,7 @@ def main() -> int:
     if do_auto and not dry:
         HERMES_HOME.mkdir(parents=True, exist_ok=True)
         entry = f"\n## {time.strftime('%Y-%m-%d %H:%M')} — auto-maintenance\n" + "\n".join(log_lines) + "\n"
-        with open(LOG, "a") as f:
+        with open(LOG, "a", encoding="utf-8") as f:
             f.write(entry)
         print(f"\n{G}✓ logged to {LOG}{RST}")
     return 0

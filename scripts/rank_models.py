@@ -29,6 +29,13 @@ import json
 import os
 import re
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import time
 import urllib.request
 from pathlib import Path
@@ -90,7 +97,7 @@ def load_health():
     if not p.exists():
         return {}, {}, set()
     try:
-        d = json.loads(p.read_text())
+        d = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}, {}, set()
     lat = {(e["provider"], e["model"]): e.get("latency") for e in d.get("live", [])}
@@ -104,7 +111,7 @@ def load_env():
     env = dict(os.environ)
     envf = HERMES_HOME / ".env"
     if envf.exists():
-        for line in envf.read_text().splitlines():
+        for line in envf.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, _, v = line.partition("=")
@@ -174,9 +181,9 @@ def main() -> int:
 
     if not CFG.exists():
         sys.exit(f"no config at {CFG} — run bootstrap first")
-    cfg = yaml.safe_load(CFG.read_text()) or {}
-    scores_cfg = yaml.safe_load((REPO / "config" / "capability_scores.yaml").read_text())
-    providers_cat = yaml.safe_load((REPO / "providers.yaml").read_text()).get("providers", {})
+    cfg = yaml.safe_load(CFG.read_text(encoding="utf-8")) or {}
+    scores_cfg = yaml.safe_load((REPO / "config" / "capability_scores.yaml").read_text(encoding="utf-8"))
+    providers_cat = yaml.safe_load((REPO / "providers.yaml").read_text(encoding="utf-8")).get("providers", {})
     table = scores_cfg.get("models", {})
     defaults = scores_cfg.get("defaults", {})
     W = scores_cfg.get("weights", {"capability": 0.6, "reliability": 0.25, "speed": 0.15})
@@ -254,9 +261,9 @@ def main() -> int:
         return 0
 
     bak = CFG.with_name(f"config.yaml.bak.rank-{time.strftime('%Y%m%d-%H%M%S')}")
-    bak.write_text(CFG.read_text())
+    bak.write_text(CFG.read_text(encoding="utf-8"), encoding="utf-8")
     cfg["fallback_providers"] = new_fb
-    CFG.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, width=1000))
+    CFG.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8")
     print(f"\n{G}✓ chain reordered by capability{RST} ({len(new_fb)} fallbacks). backup: {bak.name}")
     if not do_eval:
         print(f"{DIM}Tip: `--eval` verifies with live test calls; `--set-primary` promotes the top model.{RST}")

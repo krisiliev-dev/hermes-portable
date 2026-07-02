@@ -15,6 +15,13 @@ from __future__ import annotations
 
 import os
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 from pathlib import Path
 
 try:
@@ -32,7 +39,7 @@ GREEN, YELLOW, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[36m", "\033[2m",
 def load_env() -> dict[str, str]:
     env: dict[str, str] = {}
     if ENV_PATH.exists():
-        for line in ENV_PATH.read_text().splitlines():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -44,7 +51,7 @@ def load_env() -> dict[str, str]:
 def write_env(updates: dict[str, str]) -> None:
     """Merge updates into ~/.hermes/.env, preserving existing lines & order."""
     HERMES_HOME.mkdir(parents=True, exist_ok=True)
-    lines = ENV_PATH.read_text().splitlines() if ENV_PATH.exists() else []
+    lines = ENV_PATH.read_text(encoding="utf-8").splitlines() if ENV_PATH.exists() else []
     seen = set()
     out = []
     for line in lines:
@@ -59,7 +66,7 @@ def write_env(updates: dict[str, str]) -> None:
     for k, v in updates.items():
         if k not in seen:
             out.append(f"{k}={v}")
-    ENV_PATH.write_text("\n".join(out) + "\n")
+    ENV_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")
     try:
         os.chmod(ENV_PATH, 0o600)
     except OSError:
@@ -68,7 +75,7 @@ def write_env(updates: dict[str, str]) -> None:
 
 def main() -> int:
     check_only = "--check" in sys.argv
-    catalog = yaml.safe_load((REPO / "providers.yaml").read_text())
+    catalog = yaml.safe_load((REPO / "providers.yaml").read_text(encoding="utf-8"))
     providers = catalog.get("providers", {})
     extras = catalog.get("extras", {})
     env = load_env()

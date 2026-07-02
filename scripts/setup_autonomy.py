@@ -26,6 +26,13 @@ import re
 import shutil
 import subprocess
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent

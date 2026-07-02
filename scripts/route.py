@@ -24,6 +24,13 @@ from __future__ import annotations
 import json
 import os
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 from pathlib import Path
 
 try:
@@ -39,7 +46,7 @@ def load_env() -> dict[str, str]:
     env = dict(os.environ)
     envf = HERMES_HOME / ".env"
     if envf.exists():
-        for line in envf.read_text().splitlines():
+        for line in envf.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, _, v = line.partition("=")
@@ -82,7 +89,7 @@ def load_health_dead() -> set[tuple[str, str]]:
     dead: set[tuple[str, str]] = set()
     if cache.exists():
         try:
-            data = json.loads(cache.read_text())
+            data = json.loads(cache.read_text(encoding="utf-8"))
             for e in data.get("dead", []):
                 dead.add((e["provider"], e["model"]))
         except Exception:
@@ -114,8 +121,8 @@ def main(argv: list[str]) -> int:
         sys.exit("usage: route.py [--explain|--json] [--task CLASS] \"<prompt>\"")
     prompt = " ".join(args)
 
-    profiles = yaml.safe_load((REPO / "config" / "profiles.yaml").read_text())
-    providers_cat = yaml.safe_load((REPO / "providers.yaml").read_text()).get("providers", {})
+    profiles = yaml.safe_load((REPO / "config" / "profiles.yaml").read_text(encoding="utf-8"))
+    providers_cat = yaml.safe_load((REPO / "providers.yaml").read_text(encoding="utf-8")).get("providers", {})
     env = load_env()
 
     if forced:
@@ -127,7 +134,7 @@ def main(argv: list[str]) -> int:
     # Fall back to config primary if nothing in the profile is usable.
     fell_back = False
     if not provider:
-        cfg = yaml.safe_load((HERMES_HOME / "config.yaml").read_text()) if (HERMES_HOME / "config.yaml").exists() else {}
+        cfg = yaml.safe_load((HERMES_HOME / "config.yaml").read_text(encoding="utf-8")) if (HERMES_HOME / "config.yaml").exists() else {}
         m = cfg.get("model", {}) or {}
         provider, model = m.get("provider"), m.get("default")
         fell_back = True

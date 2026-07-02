@@ -25,6 +25,13 @@ from __future__ import annotations
 import json
 import os
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import time
 import urllib.error
 import urllib.request
@@ -46,7 +53,7 @@ G, Y, R, C, DIM, RST = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m"
 def load_env() -> dict[str, str]:
     env = dict(os.environ)
     if ENV_PATH.exists():
-        for line in ENV_PATH.read_text().splitlines():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, _, v = line.partition("=")
@@ -102,8 +109,8 @@ def main() -> int:
     if not CFG_PATH.exists():
         sys.exit(f"no config at {CFG_PATH} — run bootstrap first")
 
-    cfg = yaml.safe_load(CFG_PATH.read_text()) or {}
-    catalog = yaml.safe_load((REPO / "providers.yaml").read_text())
+    cfg = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) or {}
+    catalog = yaml.safe_load((REPO / "providers.yaml").read_text(encoding="utf-8"))
     pcat = catalog.get("providers", {})
     env = load_env()
 
@@ -140,7 +147,7 @@ def main() -> int:
         tmpl = REPO / "config" / "config.template.yaml"
         readded = 0
         if tmpl.exists():
-            for e in (yaml.safe_load(tmpl.read_text()) or {}).get("fallback_providers", []):
+            for e in (yaml.safe_load(tmpl.read_text(encoding="utf-8")) or {}).get("fallback_providers", []):
                 kkey = (e.get("provider"), e.get("model"))
                 if kkey not in seen:
                     fallbacks.append(e); seen.add(kkey); readded += 1
@@ -229,7 +236,7 @@ def main() -> int:
         return 0
 
     cfg["fallback_providers"] = new_fallbacks
-    CFG_PATH.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, width=1000))
+    CFG_PATH.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8")
     print(f"{G}✓ updated chain ({len(live)} live, {len(throttled)} throttled, "
           f"{len(safety)} safety-net).{RST}")
     return 0

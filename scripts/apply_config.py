@@ -15,6 +15,13 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+# Windows-safe console: cp1252 terminals can't encode glyphs like the medical
+# staff / check marks; force UTF-8 so prints never crash on Windows.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import time
 from pathlib import Path
 
@@ -40,8 +47,8 @@ def deep_merge(base: dict, overlay: dict) -> dict:
 
 def main() -> int:
     HERMES_HOME.mkdir(parents=True, exist_ok=True)
-    overlay = yaml.safe_load(TEMPLATE.read_text())
-    existing = yaml.safe_load(CFG.read_text()) if CFG.exists() else {}
+    overlay = yaml.safe_load(TEMPLATE.read_text(encoding="utf-8"))
+    existing = yaml.safe_load(CFG.read_text(encoding="utf-8")) if CFG.exists() else {}
     existing = existing or {}
 
     if CFG.exists():
@@ -51,10 +58,10 @@ def main() -> int:
         print(f"  backed up existing config → {bak.name}")
 
     merged = deep_merge(existing, overlay)
-    CFG.write_text(yaml.safe_dump(merged, sort_keys=False, allow_unicode=True, width=1000))
+    CFG.write_text(yaml.safe_dump(merged, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8")
 
     # sanity
-    d = yaml.safe_load(CFG.read_text())
+    d = yaml.safe_load(CFG.read_text(encoding="utf-8"))
     assert isinstance(d.get("custom_providers"), list), "custom_providers must be a list"
     assert d.get("fallback_providers"), "fallback_providers missing"
     print(f"  ✓ config written: model={d['model']['default']}, "
