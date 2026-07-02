@@ -1,0 +1,67 @@
+# Capability priors used by scripts/rank_models.py to order the chain
+# "most capable first" — the "helpful / logical / high-quality" dimension that a
+# pure health check can't measure.
+#
+# Scores are 0.0–1.0 per dimension. They're informed ESTIMATES (relative model
+# strength by size/class/specialty), not exact benchmark numbers — edit freely to
+# match your own experience, and the ranking updates next run.
+#
+# Keys are the base model id WITHOUT any ":free" suffix (so the OpenRouter free
+# variant and a native-provider copy share one entry). Unknown models fall back
+# to a heuristic estimate in rank_models.py (parses param count + coder/flash/nano
+# hints), so the table doesn't need every model — just the ones you care about.
+
+defaults:
+  # used only when a model isn't in `models` AND the heuristic can't parse it
+  reasoning: 0.60
+  coding: 0.58
+  general: 0.62
+
+models:
+  # frontier / paid safety-net
+  gpt-5.5:                                  {reasoning: 0.97, coding: 0.98, general: 0.97}
+
+  # large open (free-tier heavy hitters)
+  nvidia/nemotron-3-ultra-550b-a55b:        {reasoning: 0.93, coding: 0.90, general: 0.92}
+  qwen3-max:                                {reasoning: 0.90, coding: 0.88, general: 0.91}
+  nvidia/nemotron-3-super-120b-a12b:        {reasoning: 0.89, coding: 0.86, general: 0.89}
+  openai/gpt-oss-120b:                      {reasoning: 0.88, coding: 0.87, general: 0.88}
+  nousresearch/hermes-3-llama-3.1-405b:     {reasoning: 0.86, coding: 0.82, general: 0.89}
+
+  # coder specialists (rank high for coding, solid general)
+  qwen/qwen3-coder:                         {reasoning: 0.84, coding: 0.93, general: 0.83}
+  poolside/laguna-m.1:                      {reasoning: 0.80, coding: 0.89, general: 0.79}
+  cohere/north-mini-code:                   {reasoning: 0.68, coding: 0.83, general: 0.68}
+
+  # strong mid / general
+  qwen/qwen3-next-80b-a3b-instruct:         {reasoning: 0.83, coding: 0.80, general: 0.84}
+  gemini-2.5-flash:                         {reasoning: 0.82, coding: 0.80, general: 0.86}
+  mistral-large-latest:                     {reasoning: 0.83, coding: 0.80, general: 0.85}
+  meta-llama/llama-3.3-70b-instruct:        {reasoning: 0.80, coding: 0.76, general: 0.82}
+  command-r-plus-08-2024:                   {reasoning: 0.72, coding: 0.68, general: 0.76}
+
+  # fast / small (great latency, lower ceiling)
+  glm-4.7-flash:                            {reasoning: 0.78, coding: 0.75, general: 0.80}
+  google/gemma-4-31b-it:                    {reasoning: 0.76, coding: 0.72, general: 0.78}
+  google/gemma-4-26b-a4b-it:                {reasoning: 0.74, coding: 0.70, general: 0.76}
+  openai/gpt-oss-20b:                       {reasoning: 0.74, coding: 0.72, general: 0.74}
+  nvidia/nemotron-3-nano-omni-30b-a3b-reasoning: {reasoning: 0.74, coding: 0.66, general: 0.72}
+  nvidia/nemotron-3-nano-30b-a3b:           {reasoning: 0.70, coding: 0.66, general: 0.72}
+  poolside/laguna-xs.2:                     {reasoning: 0.70, coding: 0.80, general: 0.70}
+
+  # tiny / local last resort
+  meta-llama/llama-3.2-3b-instruct:         {reasoning: 0.45, coding: 0.40, general: 0.48}
+  llama3.2-64k:                             {reasoning: 0.40, coding: 0.35, general: 0.42}
+
+# Blend weights for the final chain score. capability = the dimensions below;
+# reliability + speed come from the last health check (.portable_health.json).
+weights:
+  capability: 0.70    # "most capable first" leads; speed/reliability break ties
+  reliability: 0.20   # live=1.0, throttled=0.5 (dead is dropped)
+  speed: 0.10         # faster live latency = higher ("quick" tiebreak)
+# Per-dimension weighting when computing a single capability number for the
+# general chain. Override per-run with `--task reasoning|coding|general`.
+capability_mix:
+  general: {general: 0.5, reasoning: 0.3, coding: 0.2}
+  reasoning: {reasoning: 0.6, general: 0.25, coding: 0.15}
+  coding: {coding: 0.6, reasoning: 0.25, general: 0.15}

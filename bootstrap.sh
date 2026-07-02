@@ -86,8 +86,11 @@ say "discovering free OpenRouter models (deep failover)…"
 if [ "$DO_HEALTH" -eq 1 ]; then
   say "health-checking the chain…"
   "${PYRUN[@]}" "$REPO/scripts/health_check.py" || true
+  # order the chain most-capable-first (benchmark mode; uses the health cache).
+  say "ranking the chain by capability…"
+  "${PYRUN[@]}" "$REPO/scripts/rank_models.py" || true
 else
-  say "skipping health check (--no-health)"
+  say "skipping health check + ranking (--no-health)"
 fi
 
 # --- 6. done ---------------------------------------------------------------

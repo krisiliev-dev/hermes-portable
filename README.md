@@ -72,6 +72,30 @@ with `$env:HERMES_HOME="$env:USERPROFILE\.hermes"` set.)
 Bootstrap runs this automatically when an `OPENROUTER_API_KEY` is present. Re-run
 anytime to refresh — the free list changes as OpenRouter adds/removes models.
 
+## Rank the chain by capability (most capable first)
+
+`health_check` only measures liveness + speed. `rank_models.py` adds the
+**capability** dimension (helpful / logical / high-quality) so the strongest
+models sit at the top of the chain:
+
+```bash
+python3 scripts/rank_models.py              # benchmark mode: instant, free
+python3 scripts/rank_models.py --eval       # also run live test prompts + score
+python3 scripts/rank_models.py --dry-run    # preview the ranking, don't write
+python3 scripts/rank_models.py --task coding # weight the ranking for coding
+python3 scripts/rank_models.py --set-primary # also promote the top model to primary
+```
+(Windows: `uv run --with pyyaml python scripts\rank_models.py ...`, `$env:HERMES_HOME` set.)
+
+**Score = 0.70·capability + 0.20·reliability + 0.10·speed** — capability leads,
+"quick" and health break ties. Weights and per-model scores live in
+`config/capability_scores.yaml` (edit to taste; models not listed get a
+size/type heuristic). `--eval` runs a few verifiable prompts (reasoning /
+instruction-following / coding) through each model and blends measured
+correctness + latency in — accurate, but it costs API calls and can hit
+free-tier rate limits mid-run. Bootstrap runs the free (benchmark) mode
+automatically after the health check.
+
 ## How failover actually works
 
 The chain auto-falls-back on **capacity/transient errors** — HTTP 429

@@ -160,8 +160,12 @@ def main() -> int:
     # Advisory cache for the router (route.py) — avoid pointing at dead models.
     try:
         (HERMES_HOME / ".portable_health.json").write_text(
-            json.dumps({"dead": dead_list,
-                        "live": [{"provider": e["provider"], "model": e["model"]} for _, e in live]}))
+            json.dumps({
+                "dead": dead_list,
+                "throttled": [{"provider": e["provider"], "model": e["model"]} for e in throttled],
+                "live": [{"provider": e["provider"], "model": e["model"], "latency": round(dt, 3)}
+                         for dt, e in live],
+            }))
     except Exception:
         pass
 

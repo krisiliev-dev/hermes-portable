@@ -5,7 +5,9 @@
 #   ./bin/hermes route "<prompt>"-> show which model the router would pick (no LLM call)
 #   ./bin/hermes --setup         -> re-run full bootstrap (config + keys + health)
 #   ./bin/hermes --keys          -> (re)collect provider API keys
-#   ./bin/hermes --health        -> health-check + reorder the chain
+#   ./bin/hermes --health        -> health-check (prune dead, demote throttled)
+#   ./bin/hermes --rank          -> reorder chain by CAPABILITY (+ --eval for live scoring)
+#   ./bin/hermes --discover      -> pull free OpenRouter models into the chain
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,6 +18,8 @@ case "${1:-}" in
   --setup)  exec "$REPO/bootstrap.sh" ;;
   --keys)   shift; exec "${PYRUN[@]}" "$REPO/scripts/setup_keys.py" "$@" ;;
   --health) shift; exec "${PYRUN[@]}" "$REPO/scripts/health_check.py" "$@" ;;
+  --rank)   shift; exec "${PYRUN[@]}" "$REPO/scripts/rank_models.py" "$@" ;;
+  --discover) shift; exec "${PYRUN[@]}" "$REPO/scripts/discover_openrouter_free.py" "$@" ;;
   route)    shift; exec "${PYRUN[@]}" "$REPO/scripts/route.py" --explain "$@" ;;
   ask)
     shift
