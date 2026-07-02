@@ -96,6 +96,44 @@ correctness + latency in — accurate, but it costs API calls and can hit
 free-tier rate limits mid-run. Bootstrap runs the free (benchmark) mode
 automatically after the health check.
 
+## Self-improvement (`--improve`)
+
+Hermes can improve itself continuously — safely. Two tiers:
+
+```bash
+python3 scripts/self_improve.py            # auto (tier 1) + propose (tier 2)
+python3 scripts/self_improve.py --auto      # low-risk maintenance only
+python3 scripts/self_improve.py --propose   # research + write a proposals report
+```
+
+- **Tier 1 — auto-applied (low-risk, deterministic, reversible):** refresh free
+  OpenRouter models → prune dead/throttled → re-rank by capability. These run
+  through the existing backup+validate scripts and touch only the chain ordering.
+  Logged to `~/.hermes/self_improve_log.md`.
+- **Tier 2 — proposed only (never auto-applied):** Hermes uses *itself* (`hermes -z`,
+  so it can **web-research proven patterns** from comparable agent projects) to
+  propose prioritized, verifiable changes across chain/routing, prompts/reasoning,
+  quality (eval+verify+lesson-cards), and skills. Written to `~/.hermes/PROPOSALS.md`
+  for you to review and apply. Each proposal is tagged `[AUTO-SAFE]` / `[NEEDS-REVIEW]`
+  and must state how to verify it.
+
+**It never edits Hermes's own source or config-core unattended** — the old
+`auto_improve` daemon did exactly that and clobbered the chain. Improvements land
+only as: chain-ordering (via the safe scripts), a proposals report, new skills, or
+git PRs — all reversible and gated.
+
+### Schedule it (optional)
+
+- **macOS/Linux (cron):** weekly, Monday 9am →
+  `0 9 * * 1 cd /path/to/hermes-portable && ./bin/hermes --improve >> ~/.hermes/self_improve.cron.log 2>&1`
+  (or use the Claude Code `/schedule` skill).
+- **Windows (Task Scheduler):**
+  ```powershell
+  $act = New-ScheduledTaskAction -Execute "powershell" -Argument "-c `"cd C:\path\to\hermes-portable; uv run --with pyyaml python scripts\self_improve.py`""
+  $trg = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 9am
+  Register-ScheduledTask -TaskName "hermes-self-improve" -Action $act -Trigger $trg
+  ```
+
 ## How failover actually works
 
 The chain auto-falls-back on **capacity/transient errors** — HTTP 429
